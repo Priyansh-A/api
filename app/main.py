@@ -2,11 +2,16 @@ from fastapi import FastAPI , Response, status, HTTPException, Depends, Query
 from typing import Annotated
 from sqlmodel import Session, select
 import time
-from .models import Post
+from .models import Post, User
 from datetime import datetime
-from .schemas import UpdatePost
+from . import schemas
 from  .database import  create_db_and_tables, get_session
 from contextlib import asynccontextmanager
+import jwt
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -54,8 +59,8 @@ def create_posts(post: Post, session : SessionDep)-> Post:
     return post
 
 # update details of a post
-@app.put("/posts/{id}", response_model=UpdatePost)
-def update_post(id: int, post_update: UpdatePost,session: SessionDep)-> Post:
+@app.put("/posts/{id}", response_model=schemas.UpdatePost)
+def update_post(id: int, post_update: schemas.UpdatePost,session: SessionDep)-> Post:
     db_post = session.get(Post, id)
     if db_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
@@ -68,4 +73,10 @@ def update_post(id: int, post_update: UpdatePost,session: SessionDep)-> Post:
     session.refresh(db_post)
     return db_post
 
+@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
+def create_user(user: User , session : SessionDep)-> User:
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
 

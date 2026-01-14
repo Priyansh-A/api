@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, Boolean, TIMESTAMP, text
+from sqlalchemy import Column, Boolean, TIMESTAMP, text, String
 from datetime import datetime
+from pydantic import EmailStr
 class Post(SQLModel, table=True):
     
     __tablename__ = "posts"
@@ -12,4 +13,9 @@ class Post(SQLModel, table=True):
     created_at : datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()')))
     
     
-    
+class User(SQLModel, table=True):
+    __tablename__ = "users"
+    id : int = Field(primary_key=True, nullable=False)
+    email: EmailStr = Field(sa_column=Column("email", String, unique= True, nullable=False))
+    password: str = Field(index=True, nullable=False)
+    created_at : datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()')))
