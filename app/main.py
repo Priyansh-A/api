@@ -1,10 +1,10 @@
 from fastapi import FastAPI , Response, status, HTTPException, Depends, Query
 from typing import Annotated
-import psycopg2
-from psycopg2.extras import RealDictCursor
 from sqlmodel import Session, select
 import time
-from . import models
+from .models import Post
+from datetime import datetime
+from .schemas import UpdatePost
 from  .database import  create_db_and_tables, get_session
 from contextlib import asynccontextmanager
 
@@ -21,62 +21,51 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# local db
-while True:
-    try:
-        conn = psycopg2.connect(host='localhost',database='fastapi',user='postgres', password='postgres123', cursor_factory=RealDictCursor)
-        cursor = conn.cursor()
-        print("Database connection successful")
-        break
-    except Exception as error:
-        print("Connection to database failed")
-        print("Error: ", error)
-        time.sleep(2)
-
-
 #all posts 
 @app.get("/posts")
-def get_posts(session: SessionDep) -> models.Post:
-    posts = session.get(models.Post)
-    # posts = session.exec(select(models.Post)).all()
-    return {"data": posts}
+def get_posts(session: SessionDep) -> list[Post]:
+    posts = session.exec(select(Post)).all()
+    return posts
 
 # get specific post with given id
 @app.get("/posts/{id}")
-def get_post(id: int, session: SessionDep) -> models.Post:
-    post = session.get(models.Post, id)
+def get_post(id: int, session: SessionDep) -> Post:
+    post = session.get(Post, id)
     if not post:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
-    return {"message": post}
+    return  post
 
 # delete a specific post
 @app.delete("/posts/{id}", status_code = status.HTTP_204_NO_CONTENT)
-def delete_posts(id: int):
-    
-    cursor.execute("""DELETE FROM posts where id = %s returning *""", (str(id)))
-    deleted_post = cursor.fetchone()
-    conn.commit()
-    
+def delete_posts(id: int, session: SessionDep):
+    deleted_post = session.get(Post, id)
     if deleted_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"post with id: {id} does not exist")
+    session.delete(deleted_post)
+    session.commit()
     return  Response(status_code = status.HTTP_204_NO_CONTENT)
 
 # add a post
 @app.post("/posts", status_code = status.HTTP_201_CREATED) 
-def create_posts(post: models.Post):
-    cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (post.title, post.content, post.published))
-    new_post = cursor.fetchone()
-    conn.commit()
-    return{"data": new_post}
+def create_posts(post: Post, session : SessionDep)-> Post:
+    session.add(post)
+    session.commit()
+    session.refresh(post)
+    return post
 
 # update details of a post
-@app.put("/posts/{id}")
-def update_post(id: int, post: models.Post):
-    cursor.execute("""UPDATE posts SET title= %s, content= %s, published = %s where id= %s RETURNING *""", (post.title, post.content, post.published, str(id)))
-    updated_post = cursor.fetchone()
-    conn.commit()
-    if  updated_post == None:
+@app.put("/posts/{id}", response_model=UpdatePost)
+def update_post(id: int, post_update: UpdatePost,session: SessionDep)-> Post:
+    db_post = session.get(Post, id)
+    if db_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
-    return{"data": updated_post}
+    update_post = post_update.model_dump(exclude_unset=True)
+    for field, value in update_post.items():
+        setattr(db_post, field, value)
+    db_post.created_at = datetime.now()
+    session.add(db_post)
+    session.commit()
+    session.refresh(db_post)
+    return db_post
 
 
