@@ -23,6 +23,7 @@ class Post(PostBase):
 class User(BaseModel):
     email : EmailStr
     password: str
+    username: str
     
 class UserOut(BaseModel):
     id: int

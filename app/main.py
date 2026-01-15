@@ -15,21 +15,27 @@ from pwdlib import PasswordHash
 fake_users_db = {
 "alex":{
     "id": 1,
+    "username":"alex",
     "email": "alex.johnson@example.com",
-    "hashed_password": "$2y$10$hashedpasswordstring1234567890123456",
-    "created_at": "2024-01-15T10:30:00Z"
+    "hashed_password": "fakehashedsecret0",
+    "created_at": "2024-01-15T10:30:00Z",
+    "disabled": False,
   },
-  "saarah":{
+  "sarah":{
     "id": 2,
+    "username":"sarah",
     "email": "sarah.williams@example.com",
-    "hashed_password": "$2y$10$hashedpasswordstringabcdefghijklmnop",
-    "created_at": "2024-01-16T14:45:23Z"
+    "hashed_password": "fakehashedsecret1",
+    "created_at": "2024-01-16T14:45:23Z",
+    "disabled": True
   },
   "mike":{
     "id": 3,
+    "username": "mike",
     "email": "mike.chen@example.com",
-    "hashed_password": "$2y$10$hashedpasswordstring0987654321qwerty",
-    "created_at": "2024-01-17T09:15:47Z"
+    "hashed_password": "fakehashedsecret2",
+    "created_at": "2024-01-17T09:15:47Z",
+    "disabled": False
   },
 }
 
@@ -52,17 +58,31 @@ def fake_hash_password(password: str):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_user(db, username: str):
-    if 
+    if username in db:
+        user_dict = db[username]
+        return schemas.UserInDB(**user_dict)
 
 
 def fake_decode_token(token):
-    return User(
-    email="ram@example.com", password= token + "password"
-    )
+    user = get_user(fake_users_db, token)
+    return user
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not Authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
+
+async def get_current_active_user(
+    current_user = Annotated[User, Depends(get_current_user)],
+):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
 
 #all posts 
 @app.get("/posts")
@@ -124,6 +144,18 @@ def create_user(user: User , session : SessionDep)-> User:
     session.refresh(user)
     return user
 
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = schemas.UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": user.username, "token_type": "bearer"}
+    
 @app.get("/users/me")
-async def read_me(current_user: Annotated[User, Depends(get_current_user)]):
+async def read_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user
+

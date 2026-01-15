@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field
+from typing import Union
 from sqlalchemy import Column, Boolean, TIMESTAMP, text, String
 from datetime import datetime
 from pydantic import EmailStr
@@ -20,3 +21,4 @@ class User(SQLModel, table=True):
     email: EmailStr = Field(sa_column=Column("email", String, unique= True, nullable=False))
     password: str = Field(index=True, nullable=False)
     created_at : datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()')))
+    disabled: Union[bool, None] = None
