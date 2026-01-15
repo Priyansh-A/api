@@ -12,7 +12,26 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 
-
+fake_users_db = {
+"alex":{
+    "id": 1,
+    "email": "alex.johnson@example.com",
+    "hashed_password": "$2y$10$hashedpasswordstring1234567890123456",
+    "created_at": "2024-01-15T10:30:00Z"
+  },
+  "saarah":{
+    "id": 2,
+    "email": "sarah.williams@example.com",
+    "hashed_password": "$2y$10$hashedpasswordstringabcdefghijklmnop",
+    "created_at": "2024-01-16T14:45:23Z"
+  },
+  "mike":{
+    "id": 3,
+    "email": "mike.chen@example.com",
+    "hashed_password": "$2y$10$hashedpasswordstring0987654321qwerty",
+    "created_at": "2024-01-17T09:15:47Z"
+  },
+}
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
@@ -25,6 +44,25 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+# security
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def get_user(db, username: str):
+    if 
+
+
+def fake_decode_token(token):
+    return User(
+    email="ram@example.com", password= token + "password"
+    )
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    return user
 
 #all posts 
 @app.get("/posts")
@@ -73,6 +111,12 @@ def update_post(id: int, post_update: schemas.UpdatePost,session: SessionDep)-> 
     session.refresh(db_post)
     return db_post
 
+
+# oauthtest
+@app.get("/items")
+async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
+    return {"token": token}
+
 @app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
 def create_user(user: User , session : SessionDep)-> User:
     session.add(user)
@@ -80,3 +124,6 @@ def create_user(user: User , session : SessionDep)-> User:
     session.refresh(user)
     return user
 
+@app.get("/users/me")
+async def read_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user

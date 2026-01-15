@@ -20,7 +20,7 @@ class UpdatePost(PostBase):
 class Post(PostBase):
     pass
 
-class UserCreate(BaseModel):
+class User(BaseModel):
     email : EmailStr
     password: str
     
@@ -30,3 +30,7 @@ class UserOut(BaseModel):
     created_at: datetime
     class Config:
         from_attributes = True
+
+class UserInDB(User):
+    hashed_password: str
+    
