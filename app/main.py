@@ -3,7 +3,7 @@ from typing import Annotated, Optional
 from sqlmodel import Session, select
 import time
 from .models import Post, User
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from . import schemas
 from  .database import  create_db_and_tables, get_session
 from contextlib import asynccontextmanager
@@ -11,6 +11,18 @@ import jwt
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+
+# env files
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
@@ -28,32 +40,43 @@ app = FastAPI(lifespan=lifespan)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_user(session: SessionDep, username: str):
-    if username in session:
-        user_dict = session[username]
-        return user_dict
+    try:
+        user = session.exec(select(User).where(User.username == username)).first()
+        
+        if user:
+            return user
+        return None
+    except Exception as e:
+        print(f"Error fetching user: {e}")
+        return None
 
 
-def fake_decode_token(token):
-    user = get_user(SessionDep, token)
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now() + expires_delta
+    else:
+        expire = datetime.now() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm= ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(session: SessionDep ,token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate":"Bearer"},)    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user = get_user(session, username=token_data.username)
+    if user is None:
+        raise credentials_exception
     return user
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    user = fake_decode_token(token)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not Authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-async def get_current_active_user(
-    current_user: Optional[User] = None,
-):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
+        
 #all posts 
 @app.get("/posts")
 def get_posts(session: SessionDep) -> list[Post]:
@@ -122,7 +145,7 @@ async def login(session: SessionDep,form_data: Annotated[OAuth2PasswordRequestFo
 
     return {"access_token": user_db.username, "token_type": "bearer"}
     
-@app.get("/users/me")
-async def read_me(current_user: Annotated[User, Depends(get_current_active_user)]):
-    return current_user
+# @app.get("/users/me")
+# async def read_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+#     return current_user
 
