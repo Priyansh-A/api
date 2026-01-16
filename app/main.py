@@ -1,5 +1,5 @@
 from fastapi import FastAPI , Response, status, HTTPException, Depends, Query
-from typing import Annotated
+from typing import Annotated, Optional
 from sqlmodel import Session, select
 import time
 from .models import Post, User
@@ -11,33 +11,6 @@ import jwt
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
-
-fake_users_db = {
-"alex":{
-    "id": 1,
-    "username":"alex",
-    "email": "alex.johnson@example.com",
-    "hashed_password": "fakehashedsecret0",
-    "created_at": "2024-01-15T10:30:00Z",
-    "disabled": False,
-  },
-  "sarah":{
-    "id": 2,
-    "username":"sarah",
-    "email": "sarah.williams@example.com",
-    "hashed_password": "fakehashedsecret1",
-    "created_at": "2024-01-16T14:45:23Z",
-    "disabled": True
-  },
-  "mike":{
-    "id": 3,
-    "username": "mike",
-    "email": "mike.chen@example.com",
-    "hashed_password": "fakehashedsecret2",
-    "created_at": "2024-01-17T09:15:47Z",
-    "disabled": False
-  },
-}
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
@@ -51,20 +24,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-def fake_hash_password(password: str):
-    return "fakehashed" + password
-
 # security
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return schemas.UserInDB(**user_dict)
+def get_user(session: SessionDep, username: str):
+    if username in session:
+        user_dict = session[username]
+        return user_dict
 
 
 def fake_decode_token(token):
-    user = get_user(fake_users_db, token)
+    user = get_user(SessionDep, token)
     return user
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
@@ -78,7 +48,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     return user
 
 async def get_current_active_user(
-    current_user = Annotated[User, Depends(get_current_user)],
+    current_user: Optional[User] = None,
 ):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
@@ -145,15 +115,12 @@ def create_user(user: User , session : SessionDep)-> User:
     return user
 
 @app.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user_dict = fake_users_db.get(form_data.username)
-    if not user_dict:
+async def login(session: SessionDep,form_data: Annotated[OAuth2PasswordRequestForm, Depends()])-> dict:
+    user_db =session.exec(select(User).where(User.username == form_data.username)).first()
+    if not user_db:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    user = schemas.UserInDB(**user_dict)
-    hashed_password = fake_hash_password(form_data.password)
-    if not hashed_password == user.hashed_password:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    return {"access_token": user.username, "token_type": "bearer"}
+
+    return {"access_token": user_db.username, "token_type": "bearer"}
     
 @app.get("/users/me")
 async def read_me(current_user: Annotated[User, Depends(get_current_active_user)]):

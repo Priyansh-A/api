@@ -24,7 +24,7 @@ class User(BaseModel):
     email : EmailStr
     password: str
     username: str
-    
+    disabled: bool    
 class UserOut(BaseModel):
     id: int
     email: EmailStr
