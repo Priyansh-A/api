@@ -1,19 +1,10 @@
-from fastapi import FastAPI , Response, status, HTTPException, Depends, Query
-from typing import Annotated, Optional
-from sqlmodel import Session, select
-import time
-from .models import Post, User
-from datetime import datetime, timedelta, timezone
-from . import schemas
-from  .database import  create_db_and_tables, get_session
+from fastapi import FastAPI
+from  .database import  create_db_and_tables
 from contextlib import asynccontextmanager
-import jwt
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
-from pwdlib import PasswordHash
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from .routers import post, user
 
 
 # env files
@@ -23,8 +14,6 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-SessionDep = Annotated[Session, Depends(get_session)]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,133 +25,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# security
+app.include_router(post.router)
+app.include_router(user.router)
 
-password_hash = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+@app.get("/")
+def root():
+    return {"message": "Hello World!"}
 
-
-def get_user(session: SessionDep, username: str):
-    try:
-        user = session.exec(select(User).where(User.username == username)).first()
-        
-        if user:
-            return user
-        return None
-    except Exception as e:
-        print(f"Error fetching user: {e}")
-        return None
-    
-    
-# def authenticate_user(session: Session, username: str, password: str):
-#     user = get_user(session, username)
-#     if not user:
-#         return False
-#     if not ver
-    
-
-
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now() + expires_delta
-    else:
-        expire = datetime.now() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm= ALGORITHM)
-    return encoded_jwt
-
-
-async def get_current_user(session: SessionDep ,token: Annotated[str, Depends(oauth2_scheme)]):
-    credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate":"Bearer"},)    
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = schemas.TokenData(username=username)
-    except InvalidTokenError:
-        raise credentials_exception
-    user = get_user(session, username=token_data.username)
-    if user is None:
-        raise credentials_exception
-    return user
-        
-#all posts 
-@app.get("/posts")
-def get_posts(session: SessionDep) -> list[Post]:
-    posts = session.exec(select(Post)).all()
-    return posts
-
-# get specific post with given id
-@app.get("/posts/{id}")
-def get_post(id: int, session: SessionDep) -> Post:
-    post = session.get(Post, id)
-    if not post:
-        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
-    return  post
-
-# delete a specific post
-@app.delete("/posts/{id}", status_code = status.HTTP_204_NO_CONTENT)
-def delete_posts(id: int, session: SessionDep):
-    deleted_post = session.get(Post, id)
-    if deleted_post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"post with id: {id} does not exist")
-    session.delete(deleted_post)
-    session.commit()
-    return  Response(status_code = status.HTTP_204_NO_CONTENT)
-
-# add a post
-@app.post("/posts", status_code = status.HTTP_201_CREATED) 
-def create_posts(post: Post, session : SessionDep)-> Post:
-    session.add(post)
-    session.commit()
-    session.refresh(post)
-    return post
-
-# update details of a post
-@app.put("/posts/{id}", response_model=schemas.UpdatePost)
-def update_post(id: int, post_update: schemas.UpdatePost,session: SessionDep)-> Post:
-    db_post = session.get(Post, id)
-    if db_post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
-    update_post = post_update.model_dump(exclude_unset=True)
-    for field, value in update_post.items():
-        setattr(db_post, field, value)
-    db_post.created_at = datetime.now()
-    session.add(db_post)
-    session.commit()
-    session.refresh(db_post)
-    return db_post
-
-
-# oauthtest
-@app.get("/items")
-async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
-    return {"token": token}
-
-@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
-def create_user(user: schemas.UserCreate , session : SessionDep)-> User:
-    
-    # hash password
-    hashed_password = password_hash.hash(user.password)
-    user.password = hashed_password
-    
-    new_user = User(**user.model_dump())
-    session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
-    return new_user
-
-@app.post("/token")
-async def login(session: SessionDep,form_data: Annotated[OAuth2PasswordRequestForm, Depends()])-> dict:
-    user_db =session.exec(select(User).where(User.username == form_data.username)).first()
-    if not user_db:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-
-    return {"access_token": user_db.username, "token_type": "bearer"}
-    
-# @app.get("/users/me")
-# async def read_me(current_user: Annotated[User, Depends(get_current_active_user)]):
-#     return current_user
 
