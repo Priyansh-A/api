@@ -32,9 +32,10 @@ class UserOut(BaseModel):
     class Config:
         from_attributes = True
 
-class UserInDB(User):
-    hashed_password: str
-    
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    username: str
 
 class Token(BaseModel):
     access_token: str

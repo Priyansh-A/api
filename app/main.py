@@ -37,7 +37,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # security
+
+password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 def get_user(session: SessionDep, username: str):
     try:
@@ -49,6 +52,14 @@ def get_user(session: SessionDep, username: str):
     except Exception as e:
         print(f"Error fetching user: {e}")
         return None
+    
+    
+# def authenticate_user(session: Session, username: str, password: str):
+#     user = get_user(session, username)
+#     if not user:
+#         return False
+#     if not ver
+    
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -131,11 +142,17 @@ async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
     return {"token": token}
 
 @app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
-def create_user(user: User , session : SessionDep)-> User:
-    session.add(user)
+def create_user(user: schemas.UserCreate , session : SessionDep)-> User:
+    
+    # hash password
+    hashed_password = password_hash.hash(user.password)
+    user.password = hashed_password
+    
+    new_user = User(**user.model_dump())
+    session.add(new_user)
     session.commit()
-    session.refresh(user)
-    return user
+    session.refresh(new_user)
+    return new_user
 
 @app.post("/token")
 async def login(session: SessionDep,form_data: Annotated[OAuth2PasswordRequestForm, Depends()])-> dict:
