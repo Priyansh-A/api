@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from .routers import post, user
+from .routers import post, user, auth
 
 
 # env files
@@ -27,6 +27,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(post.router)
 app.include_router(user.router)
+app.include_router(auth.router)
 
 @app.get("/")
 def root():
