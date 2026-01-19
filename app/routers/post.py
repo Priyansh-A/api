@@ -7,7 +7,8 @@ from datetime import datetime
 #all posts 
 
 router = APIRouter(
-    prefix="/posts"
+    prefix="/posts",
+    tags=['Posts']
 )
 
 @router.get("/")

@@ -5,7 +5,8 @@ from sqlmodel import select
 from ..database import SessionDep
 
 router = APIRouter(
-    prefix="/users"
+    prefix="/users",
+    tags = ['Users']
 )
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
