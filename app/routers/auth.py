@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Response
 from ..database import SessionDep
-from .. import schemas, models, utils
+from .. import schemas, models, utils, oauth2
 from sqlmodel import select
 
 
@@ -17,6 +17,7 @@ def login(user_credentials: schemas.UserLogin ,session: SessionDep):
     if not utils.verify(user_credentials.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials")    
+    # create token
+    access_token = oauth2.create_access_token(data = {"user_id": user.id, "username": user.username})
     
-    # token
-    return {"token": "example token"}
+    return {"access_token": access_token, "token_type": "bearer"}

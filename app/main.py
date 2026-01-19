@@ -1,19 +1,8 @@
 from fastapi import FastAPI
 from  .database import  create_db_and_tables
 from contextlib import asynccontextmanager
-import os
-from pathlib import Path
-from dotenv import load_dotenv
 from .routers import post, user, auth
 
-
-# env files
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
