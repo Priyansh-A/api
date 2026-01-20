@@ -26,7 +26,7 @@ def get_post(id: int, session: SessionDep) -> Post:
 
 # delete a specific post
 @router.delete("/{id}", status_code = status.HTTP_204_NO_CONTENT)
-def delete_posts(id: int, session: SessionDep,user_id: int = Depends(oauth2.get_current_user)):
+def delete_posts(id: int, session: SessionDep, current_user: int = Depends(oauth2.get_current_user)):
     deleted_post = session.get(Post, id)
     if deleted_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"post with id: {id} does not exist")
@@ -36,7 +36,7 @@ def delete_posts(id: int, session: SessionDep,user_id: int = Depends(oauth2.get_
 
 # add a post
 @router.post("/", status_code = status.HTTP_201_CREATED) 
-def create_posts(post: Post, session : SessionDep, user_id: int = Depends(oauth2.get_current_user)):
+def create_posts(post: Post, session : SessionDep, current_user: int = Depends(oauth2.get_current_user)):
     
     session.add(post)
     session.commit()
@@ -45,7 +45,7 @@ def create_posts(post: Post, session : SessionDep, user_id: int = Depends(oauth2
 
 # update details of a post
 @router.put("/{id}", response_model=schemas.UpdatePost)
-def update_post(id: int, post_update: schemas.UpdatePost,session: SessionDep,user_id: int = Depends(oauth2.get_current_user)):
+def update_post(id: int, post_update: schemas.UpdatePost,session: SessionDep, current_user: int = Depends(oauth2.get_current_user)):
     db_post = session.get(Post, id)
     if db_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
