@@ -4,6 +4,7 @@ from fastapi import  Response, status, HTTPException, APIRouter, Depends
 from sqlmodel import select
 from ..database import SessionDep
 from datetime import datetime
+from typing import List
 #all posts 
 
 router = APIRouter(
@@ -11,14 +12,16 @@ router = APIRouter(
     tags=['Posts']
 )
 
-@router.get("/")
-def get_posts(session: SessionDep) -> list[Post]:
+@router.get("/", response_model=List[schemas.Post])
+def get_posts(session: SessionDep):
     posts = session.exec(select(Post)).all()
+    if not posts:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail="couldn't find any posts")
     return posts
 
 # get specific post with given id
-@router.get("/{id}")
-def get_post(id: int, session: SessionDep) -> Post:
+@router.get("/{id}", response_model=schemas.Post)
+def get_post(id: int, session: SessionDep):
     post = session.get(Post, id)
     if not post:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
@@ -35,9 +38,10 @@ def delete_posts(id: int, session: SessionDep, current_user: int = Depends(oauth
     return  Response(status_code = status.HTTP_204_NO_CONTENT)
 
 # add a post
-@router.post("/", status_code = status.HTTP_201_CREATED) 
+@router.post("/", status_code = status.HTTP_201_CREATED, response_model=schemas.PostUser) 
 def create_posts(post: Post, session : SessionDep, current_user: int = Depends(oauth2.get_current_user)):
     
+    post.user_id = current_user.id
     session.add(post)
     session.commit()
     session.refresh(post)

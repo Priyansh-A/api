@@ -12,7 +12,7 @@ class Post(SQLModel, table=True):
     content : str = Field(index= True, nullable=False)
     published : bool = Field(default=True, sa_column=Column(Boolean, server_default='true', nullable=False))
     created_at : datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()')))
-    
+    user_id: int | None = Field(default=None, foreign_key="users.id", ondelete="CASCADE", nullable=False)
     
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -21,4 +21,4 @@ class User(SQLModel, table=True):
     email: EmailStr = Field(sa_column=Column("email", String, unique= True, nullable=False))
     password: str = Field(index=True, nullable=False)
     created_at : datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()')))
-    disabled: Union[bool, None] = None
+    disabled: bool = Field(default=False, sa_column=Column(Boolean, server_default="false", nullable=False))

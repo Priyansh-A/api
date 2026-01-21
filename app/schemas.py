@@ -18,13 +18,23 @@ class UpdatePost(PostBase):
 
 
 class Post(PostBase):
-    pass
+    id: int
+    created_at: datetime
+    user_id: int
+    
+    class Config:
+        from_attributes = True
+
+class PostUser(BaseModel):
+    user_id: int
+    id: int
 
 class User(BaseModel):
     email : EmailStr
     password: str
     username: str
     disabled: bool    
+
 class UserOut(BaseModel):
     id: int
     email: EmailStr
