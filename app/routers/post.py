@@ -13,8 +13,8 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[schemas.Post])
-def get_posts(session: SessionDep):
-    posts = session.exec(select(Post)).all()
+def get_posts(session: SessionDep, limit: int = 5):
+    posts = session.exec(select(Post).limit(limit)).all()
     if not posts:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail="couldn't find any posts")
     return posts

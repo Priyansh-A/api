@@ -1,7 +1,7 @@
+from __future__ import annotations
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional
-
 
 class PostBase(BaseModel):
     title: str
@@ -21,6 +21,7 @@ class Post(PostBase):
     id: int
     created_at: datetime
     user_id: int
+    owner: UserOut
     
     class Config:
         from_attributes = True
@@ -37,7 +38,7 @@ class User(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    email: EmailStr
+    username: str
     created_at: datetime
     class Config:
         from_attributes = True
