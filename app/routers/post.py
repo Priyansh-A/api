@@ -33,6 +33,8 @@ def delete_posts(id: int, session: SessionDep, current_user: int = Depends(oauth
     deleted_post = session.get(Post, id)
     if deleted_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"post with id: {id} does not exist")
+    if deleted_post.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="post doesn't belong to the current user")
     session.delete(deleted_post)
     session.commit()
     return  Response(status_code = status.HTTP_204_NO_CONTENT)
@@ -53,6 +55,8 @@ def update_post(id: int, post_update: schemas.UpdatePost,session: SessionDep, cu
     db_post = session.get(Post, id)
     if db_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
+    if db_post.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="post doesn't belong to the current user")
     update_post = post_update.model_dump(exclude_unset=True)
     for field, value in update_post.items():
         setattr(db_post, field, value)
