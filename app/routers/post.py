@@ -12,6 +12,8 @@ router = APIRouter(
     tags=['Posts']
 )
 
+# getting all posts
+# response model gives the output in the form of that model
 @router.get("/", response_model=List[schemas.PostOut])
 def get_posts(
     session: SessionDep,
@@ -22,14 +24,7 @@ def get_posts(
 ):
     # Query to get posts with like counts
     query = (
-        select(
-            Post,
-            func.count(Like.post_id).label("likes")
-        )
-        .join(Like, Like.post_id == Post.id, isouter=True)
-        .group_by(Post.id)
-    )
-    
+        select(Post,func.count(Like.post_id).label("likes")).join(Like, Like.post_id == Post.id, isouter=True).group_by(Post.id))
     if search:
         query = query.where(Post.title.contains(search))
     
@@ -42,33 +37,17 @@ def get_posts(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Couldn't find any posts"
         )
-    posts_with_likes = []
-    for post, likes_count in results:
-        # Create a dictionary with all post attributes
-        post_dict = {
-            "id": post.id,
-            "title": post.title,
-            "content": post.content,
-            "published": post.published,
-            "created_at": post.created_at,
-            "user_id": post.user_id,
-            "owner": post.owner, 
-            "likes": likes_count or 0  
-        }
-        
-        # Validate with Pydantic model
-        post_out = schemas.PostOut(**post_dict)
-        posts_with_likes.append(post_out)
     
-    return posts_with_likes
+    return results
 
 # get specific post with given id
-@router.get("/{id}", response_model=schemas.Post)
+@router.get("/{id}", response_model=schemas.PostOut)
 def get_post(id: int, session: SessionDep):
-    post = session.get(Post, id)
-    if not post:
+    result = session.exec(select(
+        Post, id, func.count(Like.post_id).label("likes")).join(Like, Like.post_id == Post.id, isouter=True).group_by(Post.id).where(id == Post.id)).first()
+    if not result:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = f"couldn't find a post with id: {id}")
-    return  post
+    return  result
 
 # delete a specific post
 @router.delete("/{id}", status_code = status.HTTP_204_NO_CONTENT)

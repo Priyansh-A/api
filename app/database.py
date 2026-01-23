@@ -1,6 +1,7 @@
 from sqlmodel import create_engine, SQLModel, Session
 from typing import Annotated
 from fastapi import Depends 
+
 postgres_database_url = f"postgresql://postgres:postgres123@localhost/fastapi"
 engine = create_engine(postgres_database_url)
 
