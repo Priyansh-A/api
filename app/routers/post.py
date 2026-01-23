@@ -4,7 +4,7 @@ from fastapi import  Response, status, HTTPException, APIRouter, Depends
 from sqlmodel import select
 from ..database import SessionDep
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 #all posts 
 
 router = APIRouter(
@@ -13,8 +13,11 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[schemas.Post])
-def get_posts(session: SessionDep, limit: int = 5):
-    posts = session.exec(select(Post).limit(limit)).all()
+def get_posts(session: SessionDep, limit: int = 5, skip: int = 0, search: Optional[str] = ""):
+    query = select(Post).limit(limit).offset(skip)
+    if search:
+        query = query.where(Post.title.like(f"%{search}%"))
+    posts = session.exec(query).all()
     if not posts:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail="couldn't find any posts")
     return posts

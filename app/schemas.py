@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Annotated
 
 class PostBase(BaseModel):
     title: str
@@ -58,3 +58,7 @@ class Token(BaseModel):
     
 class TokenData(BaseModel):
     id: Optional[int] = None
+    
+class Like(BaseModel):
+    post_id: int
+    dir: Annotated[int, Field(le=1)]

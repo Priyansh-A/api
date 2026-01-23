@@ -26,3 +26,9 @@ class Post(SQLModel, table=True):
     user_id: int | None = Field(default=None, foreign_key="users.id", ondelete="CASCADE", nullable=False)
     owner: User | None = Relationship(back_populates="post")
     
+    
+class Like(SQLModel, table = True):
+    
+    __tablename__ = "likes"
+    user_id: int | None = Field(primary_key=True, default=None, foreign_key="users.id", ondelete="CASCADE", nullable=False)
+    post_id: int | None = Field(primary_key=True, default=None, foreign_key="posts.id", ondelete="CASCADE", nullable=False)
