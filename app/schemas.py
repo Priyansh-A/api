@@ -1,13 +1,32 @@
-from __future__ import annotations
-from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, Annotated
+from pydantic import BaseModel, Field, EmailStr
 
+# Your existing schemas plus new ones
 class PostBase(BaseModel):
     title: str
     content: str
     published: bool = True
     
+class UserOut(BaseModel):
+    id: int
+    username: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+class PostOut(PostBase):
+    id: int
+    created_at: datetime
+    user_id: int
+    owner: UserOut
+    likes: int
+    
+    class Config:
+        from_attributes = True
+
+class PostResponse(PostOut):
+    pass
+
 class UpdatePost(PostBase):
     created_at: datetime = Field(
         default_factory = datetime.now
@@ -16,13 +35,11 @@ class UpdatePost(PostBase):
     class Config:
         from_attributes = True
 
-
 class Post(PostBase):
     id: int
     created_at: datetime
     user_id: int
     owner: UserOut
-    
     class Config:
         from_attributes = True
 
@@ -35,13 +52,6 @@ class User(BaseModel):
     password: str
     username: str
     disabled: bool    
-
-class UserOut(BaseModel):
-    id: int
-    username: str
-    created_at: datetime
-    class Config:
-        from_attributes = True
         
 class UserCreate(BaseModel):
     email: EmailStr
