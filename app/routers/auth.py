@@ -9,8 +9,10 @@ router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/login")
-def login(session: SessionDep, user_credentials: OAuth2PasswordRequestForm = Depends()):
-    user =  session.exec(select(models.User).where(models.User.username == user_credentials.username)).first()
+async def login(session: SessionDep, user_credentials: OAuth2PasswordRequestForm = Depends()):
+    query = select(models.User).where(models.User.username == user_credentials.username)
+    result = await session.exec(query)
+    user = result.first()
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Credentials")
 

@@ -1,22 +1,15 @@
 import jwt
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
-from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-import os
 from .database import SessionDep
-from . import schemas, models
+from . import schemas, models, config
 from sqlmodel import select
 from fastapi import Depends, HTTPException, status
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# env files
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
-
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = config.settings.SECRET_KEY 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -45,11 +38,11 @@ def verify_access_token(token: str, credentials_exception):
     return token_data
     
     
-def get_current_user(session: SessionDep, token: str = Depends(oauth2_scheme)):
+async def get_current_user(session: SessionDep, token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= f"Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
     
     token = verify_access_token(token, credentials_exception)
-    
-    user = session.exec(select(models.User).where(models.User.id == token.id)).first()
-    
+    query = select(models.User).where(models.User.id == token.id)
+    val = await session.exec(query)
+    user = val.first()
     return user

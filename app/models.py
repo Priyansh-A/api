@@ -6,29 +6,65 @@ from pydantic import EmailStr
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
-    id : int = Field(primary_key=True, nullable=False)
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, nullable=False)
-    email: EmailStr = Field(sa_column=Column("email", String, unique= True, nullable=False))
-    password: str = Field(index=True, nullable=False)
-    created_at : datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()')))
-    disabled: bool = Field(default=False, sa_column=Column(Boolean, server_default="false", nullable=False))
-    post: List["Post"] = Relationship(back_populates="owner")
-    
+    email: str = Field(
+        sa_column=Column(
+            String, 
+            unique=True, 
+            nullable=False,
+            index=True
+        )
+    )
+    password: str = Field(nullable=False)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(
+            TIMESTAMP(timezone=True), 
+            nullable=False, 
+            server_default=text('CURRENT_TIMESTAMP')
+        )
+    )
+    disabled: bool = Field(
+        default=False,
+        sa_column=Column(
+            Boolean, 
+            nullable=False, 
+            server_default=text('FALSE')
+        )
+    )
+    posts: List["Post"] = Relationship(back_populates="owner")
+
+
 class Post(SQLModel, table=True):
-    
     __tablename__ = "posts"
     
-    id : int = Field(primary_key=True, nullable=False)
-    title : str = Field(index= True, nullable=False)
-    content : str = Field(index= True, nullable=False)
-    published : bool = Field(default=True, sa_column=Column(Boolean, server_default='true', nullable=False))
-    created_at : datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()')))
-    user_id: int | None = Field(default=None, foreign_key="users.id", ondelete="CASCADE", nullable=False)
-    owner: User | None = Relationship(back_populates="post")
-    
-    
-class Like(SQLModel, table = True):
-    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(index=True, nullable=False)
+    content: str = Field(nullable=False) 
+    published: bool = Field(
+        default=True,
+        sa_column=Column(
+            Boolean, 
+            nullable=False, 
+            server_default=text('TRUE')
+        )
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(
+            TIMESTAMP(timezone=True), 
+            nullable=False, 
+            server_default=text('CURRENT_TIMESTAMP')
+        )
+    )
+    user_id: int = Field(foreign_key="users.id", nullable=False)
+    owner: Optional[User] = Relationship(back_populates="posts")
+
+
+class Like(SQLModel, table=True):
     __tablename__ = "likes"
-    user_id: int | None = Field(primary_key=True, default=None, foreign_key="users.id", ondelete="CASCADE", nullable=False)
-    post_id: int | None = Field(primary_key=True, default=None, foreign_key="posts.id", ondelete="CASCADE", nullable=False)
+    
+    user_id: int = Field(foreign_key="users.id", nullable=False, primary_key=True)
+    post_id: int = Field(foreign_key="posts.id", nullable=False, primary_key=True)

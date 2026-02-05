@@ -7,11 +7,12 @@ from app.models import Post, User, Like
 import sqlmodel.sql.sqltypes
 from sqlalchemy.dialects import postgresql
 from app.database import postgres_database_url,engine, get_session
+from app.config import settings
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-config.set_main_option("sqlalchemy.url", postgres_database_url)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:

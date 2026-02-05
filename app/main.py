@@ -1,30 +1,28 @@
 from fastapi import FastAPI
-from  .database import  create_db_and_tables
+from  .database import  engine
 from contextlib import asynccontextmanager
 from .routers import post, user, auth, like
 from fastapi.middleware.cors import CORSMiddleware
+from app import models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Application is starting")
-    create_db_and_tables()
+    # start connectiom
+    async with engine.begin() as conn:
+        await conn.run_sync(models.SQLModel.metadata.create_all)
+    print("Database tables created")
     yield
-    print("application shutting down")
+    # shutdown
+    await engine.dispose()
+    print("Database connections closed")
 
 
 app = FastAPI(lifespan=lifespan)
 
 
-origins = [
-    "http://localhost",
-    "http://localhost:8080",
-    "https://www.google.com"
-]
-
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins= origins,
+    allow_origins= ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
