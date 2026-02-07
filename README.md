@@ -13,6 +13,7 @@ The project uses JWT tokens for authentication, so you might need to add a SECRE
 Use the /docs route or use API testing tool like Postman, Insomnia
 
 Configuration
+
 copy the docker-compose-prod.yml file to your device and run the command
 ```bash
 docker-compose -f "file-name" up
