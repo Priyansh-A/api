@@ -16,3 +16,15 @@ Configuration
 ```bash
 docker compose up
 ```
+
+**ScreenShots**
+
+![alt text](<ss/Screenshot 2026-02-08 143430.png>)
+![alt text](<ss/Screenshot 2026-02-08 143628.png>)
+![alt text](<ss/Screenshot 2026-02-08 143656.png>)
+![alt text](<ss/Screenshot 2026-02-08 143729.png>)
+![alt text](<ss/Screenshot 2026-02-08 143806.png>)
+![alt text](<ss/Screenshot 2026-02-08 143824.png>)
+![alt text](<ss/Screenshot 2026-02-08 143835.png>)
+![alt text](<ss/Screenshot 2026-02-08 143921.png>)
+![alt text](<ss/Screenshot 2026-02-08 143937.png>)
